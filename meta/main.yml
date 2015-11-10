@@ -9,9 +9,9 @@ galaxy_info:
   - name: Ubuntu
     versions:
     - all
-	- name: CentOS
-	  versions:
-	  - all
+  - name: CentOS
+    versions:
+    - all
   galaxy_tags:
     - postgres
     - installer
