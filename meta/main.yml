@@ -13,6 +13,8 @@ galaxy_info:
     versions:
     - all
   galaxy_tags:
-    - postgres
-    - installer
-    - db
+  - postgres
+  - installer
+  - db
+
+dependencies: []
