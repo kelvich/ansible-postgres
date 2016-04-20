@@ -30,32 +30,42 @@
   when: ansible_os_family == "RedHat"
   sudo: yes
 
+- name: increase semaphores
+  shell: sysctl kernel.sem='1000 128000 128 512'
+  sudo: yes
+
+- name: increase open files
+  shell: "echo '{{ansible_ssh_user}}  soft  nofile  65535' > /etc/security/limits.d/cluster.conf"
+  args:
+    creates: "/etc/security/limits.d/cluster.conf"
+  sudo: yes
+
+#############################################################################
+
 - name: clone postgres sources
   git: repo={{pg_repo}}
     dest={{pg_src}}
     version={{pg_version_tag}}
     depth=1
     accept_hostkey=True
+    key_file={{pg_repo_key}}
   register: pg_sources
-
-#############################################################################
-
-- stat: path={{pg_datadir}}/postmaster.pid
-  register: pg_pidfile
-
-- name: stop postgres if it was running
-  command: "{{pg_dst}}/bin/pg_ctl stop -w -D {{pg_datadir}}"
-  when: pg_pidfile.stat.exists
 
 - name: force rebuild on changed sources
   command: "rm -f {{pg_dst}}/bin/postgres"
   when: pg_sources.changed
 
 - name: build and install
-  shell: ./configure --prefix={{pg_dst}} --without-zlib && make clean && make -j {{makejobs}} && make install
+  shell: ./configure --prefix={{pg_dst}} --enable-debug --without-zlib && make clean && make -j {{makejobs}} && make install
   args:
     chdir: "{{pg_src}}"
     creates: "{{pg_dst}}/bin/postgres"
+
+#############################################################################
+
+- name: stop postgres if it was running
+  shell: "pkill -9 postgres || true"
+  when: pg_destroy_and_init
 
 - name: remove datadirs on datanodes
   command: "rm -rf {{pg_datadir}}"
@@ -63,8 +73,11 @@
 
 - name: create datadirs on datanodes
   command: "{{pg_dst}}/bin/initdb {{pg_datadir}}"
+  environment:
+    LD_LIBRARY_PATH: "{{pg_dst}}/lib/"
   args:
     creates: "{{pg_datadir}}"
+  when: pg_destroy_and_init
 
 - name: configure postgres on datanodes
   lineinfile:
@@ -72,6 +85,7 @@
     line: "{{item.line}}"
     state: present
   with_items: "{{pg_config}}"
+  when: pg_destroy_and_init
 
 - name: configure postgres on datanodes -- 2
   lineinfile:
@@ -79,17 +93,22 @@
     line: "{{item.line}}"
     state: present
   with_items: "{{pg_config_role}}"
+  when: pg_destroy_and_init
 
 - name: enable blind trust on datanodes
   lineinfile:
     dest: "{{pg_datadir}}/pg_hba.conf"
-    line: "host all all 0.0.0.0/0 trust"
-
-# - include: pg_shard.yml
-#   when: deploy_pg_shard
+    line: "{{item}}"
+    state: present
+  with_items:
+    - "host all all 0.0.0.0/0 trust"
+    - "host replication all 0.0.0.0/0 trust"
+    - "local replication all trust"
+  when: pg_destroy_and_init
 
 - name: start postgrespro
-  command: "{{pg_dst}}/bin/pg_ctl start -w -D {{pg_datadir}} -l {{pg_datadir}}/pg.log"
-
-
+  shell: "{{pg_dst}}/bin/pg_ctl start -w -D {{pg_datadir}} -l {{pg_datadir}}/pg.log"
+  environment:
+    LD_LIBRARY_PATH: "{{pg_dst}}/lib/"
+  when: pg_destroy_and_init
 
