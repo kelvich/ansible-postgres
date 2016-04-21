@@ -10,13 +10,13 @@ pg_destroy_and_init: false
 
 pg_port: 5432
 pg_config:
-  - line: "shared_buffers = 3GB"
+  #- line: "shared_buffers = 3GB"
   - line: "wal_keep_segments = 128"
   - line: "fsync = off"
   - line: "autovacuum = off"
   - line: "listen_addresses = '*'"
-  - line: "max_connections = 2048"
-  - line: "max_prepared_transactions = 100"
+  - line: "max_connections = 1024"
+  - line: "max_prepared_transactions = 400"
   - line: "port = {{pg_port}}"
 pg_config_role:
   - line: "#pg_config_role"

@@ -11,12 +11,12 @@
   - flex
   - libreadline-dev
   when: ansible_os_family == "Debian"
-  sudo: yes
+  become: yes
 
 - name: ensure dependencies (RedHat)
   yum: name="@Development tools" state=present
   when: ansible_os_family == "RedHat"
-  sudo: yes
+  become: yes
 
 - name: ensure dependencies (RedHat)
   yum: name={{item}} state=installed
@@ -28,17 +28,17 @@
   - flex
   - readline-devel
   when: ansible_os_family == "RedHat"
-  sudo: yes
+  become: yes
 
 - name: increase semaphores
   shell: sysctl kernel.sem='1000 128000 128 512'
-  sudo: yes
+  become: yes
 
 - name: increase open files
   shell: "echo '{{ansible_ssh_user}}  soft  nofile  65535' > /etc/security/limits.d/cluster.conf"
   args:
     creates: "/etc/security/limits.d/cluster.conf"
-  sudo: yes
+  become: yes
 
 #############################################################################
 
