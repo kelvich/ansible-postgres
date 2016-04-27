@@ -30,10 +30,12 @@
   when: ansible_os_family == "RedHat"
   become: yes
 
+  # XXX: bring some state here
 - name: increase semaphores
   shell: sysctl kernel.sem='1000 128000 128 512'
   become: yes
 
+  # XXX: and here too
 - name: increase open files
   shell: "echo '{{ansible_ssh_user}}  soft  nofile  65535' > /etc/security/limits.d/cluster.conf"
   args:
@@ -51,12 +53,13 @@
     key_file={{pg_repo_key}}
   register: pg_sources
 
+  # XXX: Consider using file module with state=absent rather than running rm
 - name: force rebuild on changed sources
   command: "rm -f {{pg_dst}}/bin/postgres"
   when: pg_sources.changed
 
 - name: build and install
-  shell: ./configure --prefix={{pg_dst}} --enable-debug --without-zlib && make clean && make -j {{makejobs}} && make install
+  shell: env CFLAGS="-O0" ./configure --prefix={{pg_dst}} --enable-debug --without-zlib && make clean && make -j {{makejobs}} && make install
   args:
     chdir: "{{pg_src}}"
     creates: "{{pg_dst}}/bin/postgres"
