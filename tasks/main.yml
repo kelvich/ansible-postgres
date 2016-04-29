@@ -1,3 +1,4 @@
+# vim: ts=2 sts=2 sw=2 expandtab
 ---
 
 - name: ensure dependencies (Debian)
@@ -30,16 +31,16 @@
   when: ansible_os_family == "RedHat"
   become: yes
 
-  # XXX: bring some state here
 - name: increase semaphores
-  shell: sysctl kernel.sem='1000 128000 128 512'
+  sysctl: name=kernel.sem value="1000 128000 128 512"
   become: yes
 
-  # XXX: and here too
 - name: increase open files
-  shell: "echo '{{ansible_ssh_user}}  soft  nofile  65535' > /etc/security/limits.d/cluster.conf"
-  args:
-    creates: "/etc/security/limits.d/cluster.conf"
+  lineinfile:
+    dest: /etc/security/limits.d/cluster.conf
+    line: "{{ansible_ssh_user}}  soft  nofile  65535"
+    state: present
+    create: yes
   become: yes
 
 #############################################################################
@@ -55,8 +56,9 @@
 
   # XXX: Consider using file module with state=absent rather than running rm
 - name: force rebuild on changed sources
-  command: "rm -f {{pg_dst}}/bin/postgres"
-  when: pg_sources.changed
+  #command: "rm -f {{pg_dst}}/bin/postgres"
+  file: path="{{pg_dst}}/bin/postgres" state=absend
+  when: pg_sources.changed 
 
 - name: build and install
   shell: env CFLAGS="-O0" ./configure --prefix={{pg_dst}} --enable-debug --without-zlib && make clean && make -j {{makejobs}} && make install
@@ -70,11 +72,12 @@
   shell: "pkill -9 postgres || true"
   when: pg_destroy_and_init
 
-- name: remove datadirs on datanodes
-  command: "rm -rf {{pg_datadir}}"
+- name: remove datadirs
+  #command: "rm -rf {{pg_datadir}}"
+  file: path="{{pg_datadir}}" state=absent
   when: pg_destroy_and_init
 
-- name: create datadirs on datanodes
+- name: create datadirs
   command: "{{pg_dst}}/bin/initdb {{pg_datadir}}"
   environment:
     LD_LIBRARY_PATH: "{{pg_dst}}/lib/"
@@ -88,14 +91,6 @@
     line: "{{item.line}}"
     state: present
   with_items: "{{pg_config}}"
-  when: pg_destroy_and_init
-
-- name: configure postgres on datanodes -- 2
-  lineinfile:
-    dest: "{{pg_datadir}}/postgresql.conf"
-    line: "{{item.line}}"
-    state: present
-  with_items: "{{pg_config_role}}"
   when: pg_destroy_and_init
 
 - name: enable blind trust on datanodes

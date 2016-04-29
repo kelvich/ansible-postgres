@@ -7,21 +7,18 @@ pg_repo_key: None
 pg_version_tag: master
 
 pg_destroy_and_init: false
+pg_rebuild: false
 
 pg_port: 5432
 pg_config:
-  #- line: "shared_buffers = 3GB"
-  - line: "wal_keep_segments = 128"
-  - line: "fsync = off"
-  - line: "autovacuum = off"
+  - line: "synchronous_commit = off"
   - line: "listen_addresses = '*'"
   - line: "max_connections = 1024"
   - line: "max_prepared_transactions = 400"
   - line: "port = {{pg_port}}"
-pg_config_role:
-  - line: "#pg_config_role"
 
 pg_prefix: "{{ansible_env.HOME}}/pg_cluster"
 pg_src: "{{pg_prefix}}/src"
 pg_dst: "{{pg_prefix}}/install"
 pg_datadir: "{{pg_prefix}}/data_{{pg_port}}"
+
